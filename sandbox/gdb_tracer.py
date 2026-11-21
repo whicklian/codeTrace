@@ -138,14 +138,19 @@ def trace_execution(binary_path: str, source_filename: str, max_steps: int = 500
             if "*stopped,reason=\"signal-received\"" in step_text:
                 sig_match = re.search(r'signal-name="([^"]+)"', step_text)
                 sig_desc = re.search(r'signal-meaning="([^"]+)"', step_text)
+                sig_line_match = re.search(r'line="(\d+)"', step_text)
+                sig_func_match = re.search(r'func="([^"]+)"', step_text)
                 signal_name = sig_match.group(1) if sig_match else "UNKNOWN_SIGNAL"
                 meaning = sig_desc.group(1) if sig_desc else ""
+
+                fault_line = int(sig_line_match.group(1)) if sig_line_match else current_line
+                fault_func = sig_func_match.group(1) if sig_func_match else current_func
 
                 fault_summary = {
                     "signal": signal_name,
                     "meaning": meaning,
-                    "line": current_line,
-                    "function": current_func
+                    "line": fault_line,
+                    "function": fault_func
                 }
                 break
 
