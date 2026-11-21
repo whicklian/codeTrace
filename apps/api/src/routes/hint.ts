@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const hintRouter = Router();
 
@@ -46,18 +46,11 @@ Student Question: ${studentQuestion || "I'm stuck. What went wrong?"}
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${systemInstruction}\n\n${userContext}` }]
-        }
-      ]
-    });
+    const ai = new GoogleGenerativeAI(apiKey);
+    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const response = await model.generateContent(`${systemInstruction}\n\n${userContext}`);
 
-    const text = response.text || "Examine what happens to the memory address at this step.";
+    const text = response.response.text() || "Examine what happens to the memory address at this step.";
     return res.json({ hint: text });
   } catch (err: any) {
     return res.status(500).json({
