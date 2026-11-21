@@ -17,7 +17,7 @@ interface TimelineScrubberProps {
   currentStepIndex: number;
   totalSteps: number;
   faultStepIndex?: number | null;
-  onStepChange: (index: number) => void;
+  onStepChange: (index: number | ((prev: number) => number)) => void;
   onReset: () => void;
 }
 
