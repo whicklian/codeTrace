@@ -1,0 +1,16 @@
+{
+  "name": "codetrace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CodeTrace: Interactive Memory & Query Execution Visualizer",
+  "scripts": {
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "build": "npm run build:api && npm run build:web"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}

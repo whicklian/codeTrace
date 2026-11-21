@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0d14;
+  --foreground: #f3f4f6;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d121f;
+}
+::-webkit-scrollbar-thumb {
+  background: #232e48;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* Monaco line decorations */
+.active-execution-line {
+  background: rgba(234, 179, 8, 0.18) !important;
+  border-left: 3px solid #eab308 !important;
+}
+
+.fault-execution-line {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-left: 3px solid #ef4444 !important;
+}
+
+.active-gutter-marker {
+  background: #eab308;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50%;
+  margin-left: 5px;
+  margin-top: 6px;
+}
+
+.fault-gutter-marker {
+  background: #ef4444;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50%;
+  margin-left: 4px;
+  margin-top: 5px;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+/* React Flow customizations */
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
