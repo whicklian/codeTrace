@@ -7,6 +7,8 @@ import { SqlPlanTree } from '../components/SqlPlanTree';
 import { SocraticDrawer } from '../components/SocraticDrawer';
 import { FileTree } from '../components/FileTree';
 import { TerminalOutput } from '../components/TerminalOutput';
+import { CallStackWatcher } from '../components/CallStackWatcher';
+import { TimelineScrubber } from '../components/TimelineScrubber';
 import {
   Play,
   RotateCcw,
@@ -21,9 +23,10 @@ import {
   Code2,
   Coffee,
   Boxes,
+  Eye,
+  Disc,
 } from 'lucide-react';
 
-// Preset Templates
 const TEMPLATES: Record<string, { language: string; files: Record<string, string>; entryFile: string }> = {
   cpp_linkedlist: {
     language: 'cpp',
@@ -189,7 +192,10 @@ export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('cpp');
   const [files, setFiles] = useState<Record<string, string>>(TEMPLATES.cpp_linkedlist.files);
   const [activeFile, setActiveFile] = useState<string>('main.cpp');
-  const [activeView, setActiveView] = useState<'visualizer' | 'terminal'>('visualizer');
+  const [activeView, setActiveView] = useState<'visualizer' | 'variables' | 'terminal'>('visualizer');
+
+  // Breakpoints
+  const [breakpoints, setBreakpoints] = useState<number[]>([]);
 
   // Tracing State
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -205,6 +211,12 @@ export default function Home() {
   const [sqlResult, setSqlResult] = useState<any>(null);
 
   const activeCode = files[activeFile] || '';
+
+  const handleToggleBreakpoint = (line: number) => {
+    setBreakpoints((prev) =>
+      prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line]
+    );
+  };
 
   const handleCodeChange = (newVal: string | undefined) => {
     if (newVal !== undefined) {
@@ -241,7 +253,7 @@ export default function Home() {
     }
   };
 
-  // 1. Build and Run Multi-File Project
+  // 1. Build & Run
   const handleBuildAndRun = async () => {
     setIsBuilding(true);
     setActiveView('terminal');
@@ -311,15 +323,14 @@ export default function Home() {
     }
   };
 
-  const handleStepNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStepIndex(currentStepIndex + 1);
-    }
-  };
-
-  const handleStepPrev = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
+  // Step to Next Breakpoint
+  const handleContinueToBreakpoint = () => {
+    if (breakpoints.length === 0 || steps.length === 0) return;
+    for (let i = currentStepIndex + 1; i < steps.length; i++) {
+      if (breakpoints.includes(steps[i].line)) {
+        setCurrentStepIndex(i);
+        return;
+      }
     }
   };
 
@@ -331,11 +342,13 @@ export default function Home() {
   };
 
   const currentStep = steps[currentStepIndex] || null;
+  const previousStep = currentStepIndex > 0 ? steps[currentStepIndex - 1] : null;
   const currentLine = currentStep ? currentStep.line : null;
   const faultLine = faultSummary?.line || null;
+  const faultStepIndex = faultSummary ? steps.length - 1 : null;
 
   return (
-    <main className="flex flex-col h-screen w-screen overflow-hidden bg-[#090d16]">
+    <main className="flex flex-col h-screen w-screen overflow-hidden bg-[#080c16]">
       {/* Navbar */}
       <header className="h-14 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-4 flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-3">
@@ -346,7 +359,7 @@ export default function Home() {
             Code<span className="text-blue-500">Trace</span>
           </span>
           <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
-            Universal CS Visualizer & Debugger
+            Pro Visual Debugger & IDE
           </span>
         </div>
 
@@ -387,6 +400,18 @@ export default function Home() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Breakpoint Continue */}
+          {breakpoints.length > 0 && steps.length > 0 && (
+            <button
+              onClick={handleContinueToBreakpoint}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-300 text-xs font-semibold hover:bg-rose-900/60"
+              title="Continue to Next Breakpoint"
+            >
+              <Disc className="w-3.5 h-3.5 text-rose-400" />
+              <span>Resume to BP</span>
+            </button>
+          )}
+
           {/* Build and Run */}
           <button
             onClick={handleBuildAndRun}
@@ -397,14 +422,14 @@ export default function Home() {
             {isBuilding ? 'Building...' : 'Build & Run'}
           </button>
 
-          {/* Debug / Trace */}
+          {/* Step Debug / Trace */}
           <button
             onClick={handleRunTrace}
             disabled={isTracing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 transition"
           >
             <Zap className="w-3.5 h-3.5 fill-current" />
-            {isTracing ? 'Tracing...' : 'Step Trace'}
+            {isTracing ? 'Tracing...' : 'Debug Trace'}
           </button>
         </div>
       </header>
@@ -421,41 +446,15 @@ export default function Home() {
           onLoadTemplate={handleLoadTemplate}
         />
 
-        {/* Center Pane: Editor & Step Controls */}
+        {/* Center Pane: Editor */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-slate-800 p-2 gap-2">
           <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/40 border border-slate-800/80 rounded-xl">
             <span className="text-xs font-mono text-slate-300 font-semibold truncate">
               {activeFile}
             </span>
-
-            {/* Stepping controls */}
-            {steps.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-slate-400">
-                  Step {currentStepIndex + 1}/{steps.length}
-                </span>
-                <button
-                  onClick={handleStepPrev}
-                  disabled={currentStepIndex === 0}
-                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={handleStepNext}
-                  disabled={currentStepIndex === steps.length - 1}
-                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              </div>
-            )}
+            <span className="text-[10px] text-slate-500 font-mono">
+              Click line margin to set breakpoint
+            </span>
           </div>
 
           <div className="flex-1 overflow-hidden">
@@ -465,38 +464,53 @@ export default function Home() {
               onChange={handleCodeChange}
               currentLine={currentLine}
               faultLine={faultLine}
+              breakpoints={breakpoints}
+              onToggleBreakpoint={handleToggleBreakpoint}
             />
           </div>
         </div>
 
-        {/* Right Pane: Visualizer OR Terminal Console */}
-        <div className="w-[45%] flex flex-col p-2 gap-2 min-w-0">
+        {/* Right Pane: Multi-View Inspection & Visualizer */}
+        <div className="w-[48%] flex flex-col p-2 gap-2 min-w-0">
           {/* View Tab Switcher */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/40 border border-slate-800/80 rounded-xl">
             <div className="flex items-center gap-1 text-xs">
               <button
                 onClick={() => setActiveView('visualizer')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition ${
                   activeView === 'visualizer'
                     ? 'bg-blue-600/30 text-blue-300 font-semibold border border-blue-500/40'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Boxes className="w-3.5 h-3.5" />
+                <Boxes className="w-3 h-3" />
                 <span>
-                  {selectedLanguage === 'sql' ? 'SQL Query Plan' : 'Memory & OOP Graph'}
+                  {selectedLanguage === 'sql' ? 'SQL Query Plan' : 'Memory Graph'}
                 </span>
               </button>
+
+              <button
+                onClick={() => setActiveView('variables')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition ${
+                  activeView === 'variables'
+                    ? 'bg-blue-600/30 text-blue-300 font-semibold border border-blue-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                <span>Scope & Call Stack</span>
+              </button>
+
               <button
                 onClick={() => setActiveView('terminal')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition ${
                   activeView === 'terminal'
                     ? 'bg-blue-600/30 text-blue-300 font-semibold border border-blue-500/40'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Terminal className="w-3.5 h-3.5" />
-                <span>Build & Terminal Output</span>
+                <Terminal className="w-3 h-3" />
+                <span>Build & Terminal</span>
               </button>
             </div>
           </div>
@@ -510,6 +524,11 @@ export default function Home() {
                 exitCode={buildResult?.exitCode}
                 durationMs={buildResult?.durationMs}
                 onClear={() => setBuildResult(null)}
+              />
+            ) : activeView === 'variables' ? (
+              <CallStackWatcher
+                currentStep={currentStep}
+                previousStep={previousStep}
               />
             ) : selectedLanguage === 'sql' ? (
               <SqlPlanTree
@@ -525,6 +544,15 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Bottom Timeline Scrubber & Auto-Play */}
+      <TimelineScrubber
+        currentStepIndex={currentStepIndex}
+        totalSteps={steps.length}
+        faultStepIndex={faultStepIndex}
+        onStepChange={(newIdx) => setCurrentStepIndex(newIdx)}
+        onReset={handleReset}
+      />
 
       {/* Socratic AI Tutor Drawer */}
       <SocraticDrawer
