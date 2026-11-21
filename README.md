@@ -1,43 +1,60 @@
 # CodeTrace
 
-> **Interactive Memory & Execution Visualizer for C/C++ Pointers, Java OOP, and SQL Query Execution Plans.**
+> **Interactive Multi-Language Memory & Execution Visualizer, Debugger, and Project Builder.**
 
-CodeTrace bridges the gap in computer science education by making invisible low-level runtime behavior—memory allocations, pointer graphs, stack frames, and query execution plans—fully observable and interactive.
+CodeTrace bridges the gap in computer science education and software engineering by making low-level runtime behavior—memory allocations, pointer graphs, object heaps, stack frames, query plans, and multi-file builds—observable and interactive across **C, C++, Python, Java, JavaScript/TypeScript, and SQL**.
+
+---
+
+## 🚀 Key Features
+
+- **🌐 Multi-Language Support**:
+  - **C & C++**: Direct GDB/MI2 tracer capturing stack frames, pointer dereferences, heap allocations, and `SIGSEGV` segmentation faults.
+  - **Python**: Line-by-line `sys.settrace` execution tracer capturing variable scopes, memory addresses (`id`), recursive call stacks, and exception diagnostics.
+  - **Java (OOP)**: Object heap visualizer with reference pointers and class state inspection.
+  - **JavaScript / TypeScript**: Node.js runtime execution with variable scope inspect.
+  - **PostgreSQL / SQL**: Visual query plan tree analyzer rendering costs, row metrics, and `Seq Scan` vs. `Index Scan` bottlenecks.
+
+- **📁 Multi-File Project Builder & Runner**:
+  - Built-in **File Explorer** allowing creation, editing, and deletion of multi-file projects (e.g. `main.cpp` + `LinkedList.h` + `LinkedList.cpp`).
+  - **One-Click Build & Run**: Compiles with `g++ -std=c++17 -Wall`, runs scripts with Python 3, Java, or Node, capturing build outputs, exit codes, and execution times.
+
+- **🖥 Integrated Terminal & Build Console**:
+  - Live console displaying Build logs, Standard Output (`stdout`), Standard Error (`stderr`), execution duration, and exit status.
+
+- **🧠 Gemini Socratic AI Tutor**:
+  - Socratic bug interceptor that never gives away direct fixes—instead asks targeted conceptual questions pointing to the exact memory address, dangling pointer, or scan bottleneck.
 
 ---
 
 ## 🏛 System Architecture
 
-CodeTrace isolates untrusted code execution using safe, sandboxed execution engines:
-
 ```
-┌─────────────────────┐      REST / WebSockets      ┌──────────────────────────┐
-│   Next.js Frontend  │ ◄─────────────────────────► │   Node.js / Express API  │
-│  - Monaco Editor    │                             │  - Trace Parser          │
-│  - React Flow Graph │                             │  - Gemini Socratic Agent │
-│  - SQL Plan Tree    │                             └────┬────────────────┬────┘
-└─────────────────────┘                                  │                │
-                                    Docker Sandbox (Unix)│                │ Isolated DB Role
-                                                         ▼                ▼
-                                            ┌─────────────────┐  ┌──────────────────┐
-                                            │   GDB/MI Runner │  │    PostgreSQL    │
-                                            │ (g++ -g trace)  │  │ EXPLAIN (FORMAT  │
-                                            └─────────────────┘  │      JSON)       │
-                                                                 └──────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Next.js Web Client                            │
+│  • File Explorer (Multi-file projects & templates)                     │
+│  • Monaco Code Editor (Active line & runtime fault highlights)         │
+│  • React Flow Memory Canvas (Stack ➔ Heap & Dangling Pointers)         │
+│  • PostgreSQL EXPLAIN Execution Plan Tree                              │
+│  • Integrated Terminal Console (Build logs, stdout, stderr)            │
+│  • Gemini Socratic Tutor Drawer ("I'm Stuck")                          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ REST API
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Express.js API Engine                           │
+│  • POST /api/build  (Compiles & runs multi-file C++, Python, Java, JS)  │
+│  • POST /api/trace  (Step-by-step MI2 / sys.settrace execution tracer) │
+│  • POST /api/hint   (Gemini 2.5 Socratic guiding question generator)   │
+└──────────────┬────────────────────┬────────────────────┬───────────────┘
+               │                    │                    │
+               ▼                    ▼                    ▼
+     ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+     │  GDB/MI Runner   │ │  Python Tracer   │ │    PostgreSQL    │
+     │  (C/C++ Pointer  │ │ (sys.settrace    │ │ EXPLAIN (FORMAT  │
+     │   Memory Trace)  │ │  Memory & Scope) │ │      JSON)       │
+     └──────────────────┘ └──────────────────┘ └──────────────────┘
 ```
-
-1. **C/C++ Memory Tracer (GDB Machine Interface):**
-   - Compiles user code with debug symbols (`g++ -g -O0 main.cpp -o app`) inside an isolated, non-networked Docker container (`--network none --memory 128m --cpus 0.5`).
-   - Drives `gdb --interpreter=mi2` via a Python wrapper script. At every `step`, dumps stack frames, local variables, and pointer addresses (`&var` and `*ptr`) into a structured JSON trace array.
-
-2. **PostgreSQL Query Plan Visualizer:**
-   - Pre-seeded sandbox schemas (e.g., `university_db` with `students`, `courses`, `enrollments`).
-   - Executes queries in read-only transactions with `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`.
-   - Renders animated query plan trees highlighting bottlenecks (`Seq Scan` vs. `Index Scan`, cost thresholds, row counts).
-
-3. **Socratic Bug Interceptor (Gemini API):**
-   - Activated on runtime faults (`SIGSEGV`, null/dangling pointer dereferences) or on-demand via *"I'm Stuck"*.
-   - Evaluates code context, failing lines, and memory snapshots to guide students Socratically without simply handing them the solution.
 
 ---
 
@@ -49,38 +66,54 @@ codetrace/
 │   ├── web/                        # Next.js (App Router, Tailwind CSS, React Flow, Monaco)
 │   │   ├── components/
 │   │   │   ├── CodeEditor.tsx      # Monaco Editor with active-line & fault highlights
+│   │   │   ├── FileTree.tsx        # Multi-file explorer with starter templates
 │   │   │   ├── MemoryCanvas.tsx    # React Flow graph linking Stack vars -> Heap addresses
 │   │   │   ├── SqlPlanTree.tsx     # Interactive EXPLAIN JSON node visualizer
-│   │   │   └── SocraticDrawer.tsx  # Gemini-powered AI tutor panel
+│   │   │   ├── TerminalOutput.tsx  # Integrated build & execution output console
+│   │   │   └── SocraticDrawer.tsx  # Gemini-powered Socratic AI tutor panel
 │   │   └── app/page.tsx
 │   └── api/                        # Node.js + Express REST API
 │       ├── routes/
-│       │   ├── trace.ts            # POST /api/trace (C++ or SQL execution runner)
+│       │   ├── build.ts            # POST /api/build (multi-file project builder)
+│       │   ├── trace.ts            # POST /api/trace (C++, Python, Java, JS, SQL tracer)
 │       │   └── hint.ts             # POST /api/hint (Gemini Socratic tutor prompt)
 │       └── services/
-│           ├── dockerRunner.ts     # Spawns isolated container with execution timeout
-│           └── sqlExplainer.ts     # Runs EXPLAIN (FORMAT JSON) queries safely
-├── sandbox/                        # Docker container for C/C++ tracing
-│   ├── Dockerfile                  # Ubuntu/Alpine + g++ + gdb + python3
-│   └── gdb_tracer.py               # GDB/MI protocol driver & JSON serializer
+│           ├── projectBuilder.ts   # Compiles and runs multi-file projects with timeouts
+│           ├── dockerRunner.ts     # Sandboxed GDB execution runner
+│           └── sqlExplainer.ts     # PostgreSQL EXPLAIN (FORMAT JSON) plan analyzer
+├── sandbox/                        # Low-level execution tracers
+│   ├── Dockerfile                  # Ubuntu sandbox container
+│   ├── gdb_tracer.py               # GDB/MI2 step tracer for C/C++ memory
+│   └── python_tracer.py            # sys.settrace step tracer for Python memory
 └── schema.sql                      # Database schema for challenges, traces, & hints
 ```
 
 ---
 
-## 🗄 Database Schema
+## 🏁 Getting Started
 
-The core database schema is defined in [schema.sql](file:///home/nyxara/Desktop/CodeTrace/schema.sql):
+### 1. Prerequisites
+- Node.js 18+ (tested on Node v24)
+- GCC / G++ (for C/C++ compilation)
+- Python 3 (for Python tracing)
+- Java Runtime (for Java execution)
 
-- `challenges`: Curated lab challenges and bug scenarios.
-- `execution_traces`: Saved execution traces for instant replay and shareable links.
-- `socratic_hints`: Log of student questions and guided Socratic hints.
+### 2. Development Setup
 
----
+```bash
+# Clone the repository
+git clone https://github.com/whicklian/codeTrace.git
+cd codeTrace
 
-## ⚡ 3-Minute Live Demo Script
+# Start Backend API (runs on http://localhost:3001)
+npm run dev:api
 
-1. **0:00 – 0:45 (The Problem):** The barrier of invisible abstractions in introductory CS (pointers, dangling memory, query optimizer decisions).
-2. **0:45 – 1:45 (Live C++ Segfault Demo):** Step through a linked-list deletion bug; React Flow visualizes stack boxes and heap allocations with hex addresses. Freeing before pointer advancement marks the node as dangling and triggers the Gemini Socratic tutor.
-3. **1:45 – 2:30 (Live SQL Query Plan Demo):** Execute an unindexed multi-table JOIN showing high-cost red `Seq Scan` nodes; add an index live and watch the tree turn green with `Index Only Scan` dropping execution time by 98%.
-4. **2:30 – 3:00 (Impact & Vision):** Educational platform integration for CS laboratories and automated conceptual grading.
+# In a separate terminal, start Next.js Frontend (runs on http://localhost:3000)
+npm run dev:web
+```
+
+### 3. Production Build
+
+```bash
+npm run build
+```
